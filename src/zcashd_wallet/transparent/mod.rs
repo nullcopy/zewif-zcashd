@@ -9,3 +9,4 @@ mod_use!(key_pool);
 mod_use!(script_id);
 mod_use!(out_point);
 mod_use!(wallet_key);
+mod_use!(watch_script);

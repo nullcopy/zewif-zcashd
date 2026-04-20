@@ -46,13 +46,13 @@
 
 - [ ] ckey
 - [ ] csapzkey
-- [ ] cscript
+- [x] cscript
 - [ ] czkey
 - [ ] destdata
 - [ ] hdseed
 - [ ] sapextfvk
 - [ ] vkey
-- [ ] watchs
+- [x] watchs
 - [ ] wkey
 
 ## Removed

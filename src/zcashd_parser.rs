@@ -20,10 +20,14 @@ use crate::{
         orchard::OrchardNoteCommitmentTree,
         sapling::{SaplingKey, SaplingKeys, SaplingZPaymentAddress},
         sprout::{SproutKeys, SproutPaymentAddress, SproutSpendingKey},
-        transparent::{KeyPair, KeyPoolEntry, Keys, PrivKey, PubKey, WalletKey, WalletKeys},
+        transparent::{
+            KeyPair, KeyPoolEntry, Keys, PrivKey, PubKey, ScriptId, WalletKey, WalletKeys,
+            WatchScript,
+        },
         u252,
     },
 };
+use zewif::Script;
 
 #[derive(Debug)]
 pub struct ZcashdParser<'a> {
@@ -76,6 +80,7 @@ impl<'a> ZcashdParser<'a> {
         // csapzkey
 
         // cscript
+        let cscripts = self.parse_cscripts()?;
 
         // czkey
 
@@ -127,6 +132,7 @@ impl<'a> ZcashdParser<'a> {
         // vkey
 
         // watchs
+        let watch_scripts = self.parse_watch_scripts()?;
 
         // **witnesscachesize**
         let witnesscachesize = self.parse_i64("witnesscachesize")?;
@@ -179,6 +185,7 @@ impl<'a> ZcashdParser<'a> {
             bestblock_nomerkle,
             bestblock,
             client_version,
+            cscripts,
             default_key,
             key_pool,
             keys,
@@ -196,6 +203,7 @@ impl<'a> ZcashdParser<'a> {
             wallet_keys,
             transactions,
             unified_accounts,
+            watch_scripts,
             witnesscachesize,
         );
 
@@ -603,6 +611,48 @@ impl<'a> ZcashdParser<'a> {
             self.mark_key_parsed(&key);
         }
         Ok(key_pool)
+    }
+
+    fn parse_cscripts(&self) -> Result<HashMap<ScriptId, Script>> {
+        let mut cscripts = HashMap::new();
+        if !self.dump.has_keys_for_keyname("cscript") {
+            return Ok(cscripts);
+        }
+        let records = self
+            .dump
+            .records_for_keyname("cscript")
+            .context("Getting 'cscript' records")?;
+        for (key, value) in records {
+            let script_id = parse!(buf = &key.data, ScriptId, "cscript ScriptID")?;
+            let script = parse!(buf = value.as_data(), Script, "cscript redeem script")?;
+            if cscripts.contains_key(&script_id) {
+                bail!("Duplicate cscript ScriptID found: {:?}", script_id);
+            }
+            cscripts.insert(script_id, script);
+
+            self.mark_key_parsed(&key);
+        }
+        Ok(cscripts)
+    }
+
+    fn parse_watch_scripts(&self) -> Result<Vec<WatchScript>> {
+        let mut watch_scripts = Vec::new();
+        if !self.dump.has_keys_for_keyname("watchs") {
+            return Ok(watch_scripts);
+        }
+        let records = self
+            .dump
+            .records_for_keyname("watchs")
+            .context("Getting 'watchs' records")?;
+        for (key, _value) in records {
+            let watch_script = parse!(buf = &key.data, WatchScript, "watch-only script")?;
+            if watch_scripts.contains(&watch_script) {
+                bail!("Duplicate watchs script found: {:?}", watch_script);
+            }
+            watch_scripts.push(watch_script);
+            self.mark_key_parsed(&key);
+        }
+        Ok(watch_scripts)
     }
 
     fn parse_transactions(&self, strict: bool) -> Result<HashMap<TxId, WalletTx>> {

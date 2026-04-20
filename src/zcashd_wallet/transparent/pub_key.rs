@@ -1,8 +1,14 @@
 use anyhow::{Context, Result, bail};
+use ripemd::{Digest as _, Ripemd160};
+use sha2::Sha256;
 
 use zewif::Data;
 
-use crate::{parse, parser::prelude::*, zcashd_wallet::CompactSize};
+use crate::{
+    parse,
+    parser::prelude::*,
+    zcashd_wallet::{CompactSize, transparent::KeyId, u160},
+};
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct PubKey(Data);
@@ -17,6 +23,17 @@ impl PubKey {
 
     pub fn is_compressed(&self) -> bool {
         self.0.as_slice().len() == Self::COMPRESSED_PUBLIC_KEY_SIZE
+    }
+
+    /// Computes the `KeyId` (HASH160 of the public key bytes) for this public
+    /// key, which is the 20-byte identifier embedded in the corresponding
+    /// transparent P2PKH address.
+    pub fn key_id(&self) -> KeyId {
+        let sha = Sha256::digest(self.as_slice());
+        let hash = Ripemd160::digest(sha);
+        let h160 = u160::from_slice(hash.as_slice())
+            .expect("RIPEMD-160 output is exactly 20 bytes");
+        KeyId::from(h160)
     }
 }
 
