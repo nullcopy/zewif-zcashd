@@ -53,6 +53,8 @@ pub struct ZcashdWallet {
     network_info: NetworkInfo,
     orchard_note_commitment_tree: OrchardNoteCommitmentTree,
     orderposnext: Option<i64>,
+    sapling_extended_full_viewing_keys:
+        HashMap<SaplingIncomingViewingKey, ::sapling::zip32::ExtendedFullViewingKey>,
     sapling_keys: SaplingKeys,
     sapling_z_addresses: HashMap<SaplingZPaymentAddress, SaplingIncomingViewingKey>,
     send_recipients: HashMap<TxId, Vec<RecipientMapping>>,
@@ -83,6 +85,10 @@ impl ZcashdWallet {
         network_info: NetworkInfo,
         orchard_note_commitment_tree: OrchardNoteCommitmentTree,
         orderposnext: Option<i64>,
+        sapling_extended_full_viewing_keys: HashMap<
+            SaplingIncomingViewingKey,
+            ::sapling::zip32::ExtendedFullViewingKey,
+        >,
         sapling_keys: SaplingKeys,
         sapling_z_addresses: HashMap<SaplingZPaymentAddress, SaplingIncomingViewingKey>,
         send_recipients: HashMap<TxId, Vec<RecipientMapping>>,
@@ -110,6 +116,7 @@ impl ZcashdWallet {
             network_info,
             orchard_note_commitment_tree,
             orderposnext,
+            sapling_extended_full_viewing_keys,
             sapling_keys,
             sapling_z_addresses,
             send_recipients,
@@ -186,6 +193,17 @@ impl ZcashdWallet {
 
     pub fn orderposnext(&self) -> Option<i64> {
         self.orderposnext
+    }
+
+    /// Sapling Extended Full Viewing Keys imported via the
+    /// `z_importviewingkey` RPC and stored under the `sapextfvk` BDB key,
+    /// keyed by the Incoming Viewing Key derived from each EFVK. Entries here
+    /// represent view-only Sapling keys: the wallet can detect transactions
+    /// against the corresponding addresses but cannot spend from them.
+    pub fn sapling_extended_full_viewing_keys(
+        &self,
+    ) -> &HashMap<SaplingIncomingViewingKey, ::sapling::zip32::ExtendedFullViewingKey> {
+        &self.sapling_extended_full_viewing_keys
     }
 
     pub fn sapling_keys(&self) -> &SaplingKeys {

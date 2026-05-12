@@ -50,7 +50,7 @@
 - [ ] czkey
 - [ ] destdata
 - [ ] hdseed
-- [ ] sapextfvk
+- [x] sapextfvk
 - [ ] vkey
 - [x] watchs
 - [ ] wkey

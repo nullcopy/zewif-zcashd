@@ -119,6 +119,7 @@ impl<'a> ZcashdParser<'a> {
         let sapling_z_addresses = self.parse_sapling_z_addresses()?;
 
         // sapextfvk
+        let sapling_extended_full_viewing_keys = self.parse_sapling_extended_full_viewing_keys()?;
 
         // sapzkey
         let sapling_keys = self.parse_sapling_keys()?;
@@ -196,6 +197,7 @@ impl<'a> ZcashdParser<'a> {
             network_info,
             orchard_note_commitment_tree,
             orderposnext,
+            sapling_extended_full_viewing_keys,
             sapling_keys,
             sapling_z_addresses,
             send_recipients,
@@ -351,6 +353,50 @@ impl<'a> ZcashdParser<'a> {
             self.mark_key_parsed(&metakey);
         }
         Ok(SaplingKeys::new(keys_map))
+    }
+
+    fn parse_sapling_extended_full_viewing_keys(
+        &self,
+    ) -> Result<HashMap<SaplingIncomingViewingKey, ::sapling::zip32::ExtendedFullViewingKey>> {
+        let mut viewing_keys = HashMap::new();
+        if !self.dump.has_keys_for_keyname("sapextfvk") {
+            return Ok(viewing_keys);
+        }
+        let records = self
+            .dump
+            .records_for_keyname("sapextfvk")
+            .context("Getting 'sapextfvk' records")?;
+        for (key, value) in records {
+            let extfvk = parse!(
+                buf = &key.data,
+                ::sapling::zip32::ExtendedFullViewingKey,
+                "sapextfvk extended full viewing key"
+            )?;
+            // zcashd writes a single byte `'1'` (0x31) and treats any other
+            // value as "do not load this key" (see zcashd
+            // walletdb.cpp:486-499). Mirror that contract: anything else
+            // means the record is not what it claims to be.
+            let marker = parse!(buf = value.as_data(), u8, "sapextfvk marker byte")?;
+            if marker != b'1' {
+                bail!(
+                    "Unexpected sapextfvk marker byte: 0x{:02x} (expected 0x31)",
+                    marker
+                );
+            }
+            let ivk = SaplingIncomingViewingKey::new(
+                extfvk
+                    .to_diversifiable_full_viewing_key()
+                    .to_ivk(::zip32::Scope::External)
+                    .to_repr(),
+            );
+            if viewing_keys.contains_key(&ivk) {
+                bail!("Duplicate sapextfvk record for ivk {:?}", ivk);
+            }
+            viewing_keys.insert(ivk, extfvk);
+
+            self.mark_key_parsed(&key);
+        }
+        Ok(viewing_keys)
     }
 
     fn parse_sprout_keys(&self) -> Result<Option<SproutKeys>> {
@@ -691,5 +737,48 @@ impl<'a> ZcashdParser<'a> {
             }
         }
         Ok(transactions)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use ::sapling::zip32::ExtendedSpendingKey;
+    use zewif::sapling::SaplingIncomingViewingKey;
+
+    use crate::parse;
+
+    /// Round-trip a `sapextfvk` payload through the byte format that
+    /// `parse_sapling_extended_full_viewing_keys` consumes, and confirm the
+    /// IVK derived from the parsed EFVK matches the one computed directly
+    /// from the originating spending key.
+    #[test]
+    fn extfvk_round_trip_yields_expected_ivk() {
+        let xsk = ExtendedSpendingKey::master(b"sapextfvk-test-seed");
+        #[allow(deprecated)]
+        let original_efvk = xsk.to_extended_full_viewing_key();
+
+        let mut bytes = Vec::new();
+        original_efvk.write(&mut bytes).unwrap();
+
+        let parsed_efvk = parse!(
+            buf = &bytes,
+            ::sapling::zip32::ExtendedFullViewingKey,
+            "round-trip extfvk"
+        )
+        .unwrap();
+
+        let parsed_ivk = SaplingIncomingViewingKey::new(
+            parsed_efvk
+                .to_diversifiable_full_viewing_key()
+                .to_ivk(::zip32::Scope::External)
+                .to_repr(),
+        );
+        let expected_ivk = SaplingIncomingViewingKey::new(
+            xsk.to_diversifiable_full_viewing_key()
+                .to_ivk(::zip32::Scope::External)
+                .to_repr(),
+        );
+
+        assert_eq!(parsed_ivk, expected_ivk);
     }
 }
