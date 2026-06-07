@@ -116,12 +116,13 @@ pub fn extract_transaction_addresses(
                                 addresses.insert(format!("our_key:{}", addr_str));
 
                                 // If we have an HD path, we can determine if this is change
-                                if let Some(hd_path) = key.metadata().hd_keypath()
-                                    && (hd_path.contains("/1'/") || hd_path.contains("/1/")) {
+                                if let Some(hd_path) = key.metadata().hd_keypath() {
+                                    if hd_path.contains("/1'/") || hd_path.contains("/1/") {
                                         // This is an internal key path, so this is likely change
                                         is_change_transaction = true;
                                         addresses.insert(format!("change_key:{}", addr_str));
                                     }
+                                }
                                 break;
                             }
                         }
@@ -195,8 +196,8 @@ pub fn extract_transaction_addresses(
             // If we have note data for this nullifier, find the address
             if let Some(sapling_note_data) = tx.sapling_note_data() {
                 for note_data in sapling_note_data.values() {
-                    if let Some(nullifier) = note_data.nullifier()
-                        && nullifier.as_slice() == spend.nullifier().as_ref() {
+                    if let Some(nullifier) = note_data.nullifier() {
+                        if nullifier.as_slice() == spend.nullifier().as_ref() {
                             // Find the address and tag it as a spend
                             for (addr, ivk) in wallet.sapling_z_addresses() {
                                 if note_data.incoming_viewing_key() == ivk {
@@ -207,6 +208,7 @@ pub fn extract_transaction_addresses(
                                 }
                             }
                         }
+                    }
                 }
             }
         }
@@ -270,8 +272,8 @@ pub fn extract_transaction_addresses(
             addresses.insert(format!("orchard_commitment:{}", commitment_hex));
 
             // Extract additional metadata if available
-            if let Some(orchard_meta) = tx.orchard_tx_meta()
-                && let Some(ivk) = orchard_meta.receiving_key(idx) {
+            if let Some(orchard_meta) = tx.orchard_tx_meta() {
+                if let Some(ivk) = orchard_meta.receiving_key(idx) {
                     // Track action by index
                     addresses.insert(format!("orchard_action:{}:{}", tx_id, idx));
 
@@ -294,6 +296,7 @@ pub fn extract_transaction_addresses(
                         }
                     }
                 }
+            }
 
             // Add the action index as a unique identifier
             addresses.insert(format!("orchard_action_idx:{}:{}", tx_id, idx));
@@ -359,15 +362,17 @@ fn is_likely_change_output(wallet: &ZcashdWallet, address: &str) -> bool {
         .find(|a| a.to_string() == address);
     if let Some(addr) = address_obj {
         // If the address has a name or purpose, it's probably not change
-        if let Some(name) = wallet.address_names().get(addr)
-            && !name.is_empty() {
+        if let Some(name) = wallet.address_names().get(addr) {
+            if !name.is_empty() {
                 return false;
             }
+        }
 
-        if let Some(purpose) = wallet.address_purposes().get(addr)
-            && !purpose.is_empty() {
+        if let Some(purpose) = wallet.address_purposes().get(addr) {
+            if !purpose.is_empty() {
                 return false;
             }
+        }
     }
 
     // If it's in our wallet but doesn't have a name or purpose, it's likely change

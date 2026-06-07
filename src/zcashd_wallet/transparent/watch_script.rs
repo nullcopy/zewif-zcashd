@@ -44,18 +44,22 @@ impl WatchScriptKind {
             && script[2] == PUSHBYTES_20
             && script[23] == OP_EQUALVERIFY
             && script[24] == OP_CHECKSIG
-            && let Ok(hash) = u160::from_slice(&script[3..23]) {
+        {
+            if let Ok(hash) = u160::from_slice(&script[3..23]) {
                 return WatchScriptKind::P2PKH(KeyId::from(hash));
             }
+        }
 
         // P2SH: 0xa9 0x14 <20 bytes> 0x87
         if script.len() == 23
             && script[0] == OP_HASH160
             && script[1] == PUSHBYTES_20
             && script[22] == OP_EQUAL
-            && let Ok(hash) = u160::from_slice(&script[2..22]) {
+        {
+            if let Ok(hash) = u160::from_slice(&script[2..22]) {
                 return WatchScriptKind::P2SH(ScriptId::from(hash));
             }
+        }
 
         // P2PK (compressed): 0x21 <33 bytes> 0xac, with a SEC1 sign byte of
         // 0x02 or 0x03. Without the sign-byte check, arbitrary 33-byte blobs

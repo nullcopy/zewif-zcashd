@@ -197,33 +197,36 @@ pub fn convert_unified_accounts(
                         {
                             // This is a spending address - may indicate source account
                             let pure_addr = &address_str[(address_str.find(':').unwrap() + 1)..];
-                            if let Ok(addr_id) = AddressId::from_address_string(pure_addr)
-                                && let Some(account_id) = address_registry.find_account(&addr_id) {
+                            if let Ok(addr_id) = AddressId::from_address_string(pure_addr) {
+                                if let Some(account_id) = address_registry.find_account(&addr_id) {
                                     relevant_accounts.insert(*account_id);
                                 }
+                            }
                         } else if address_str.starts_with("transparent_output:")
                             || address_str.starts_with("sapling_receive:")
                             || address_str.starts_with("orchard_recipient:")
                         {
                             // This is a receiving address
                             let pure_addr = &address_str[(address_str.find(':').unwrap() + 1)..];
-                            if let Ok(addr_id) = AddressId::from_address_string(pure_addr)
-                                && let Some(account_id) = address_registry.find_account(&addr_id) {
+                            if let Ok(addr_id) = AddressId::from_address_string(pure_addr) {
+                                if let Some(account_id) = address_registry.find_account(&addr_id) {
                                     relevant_accounts.insert(*account_id);
                                 }
+                            }
                         } else if address_str.starts_with("change:")
                             || address_str.starts_with("change_key:")
                             || address_str.starts_with("change_output:")
                         {
                             // This is a change address - try to find its account
                             let pure_addr = &address_str[(address_str.find(':').unwrap() + 1)..];
-                            if let Ok(addr_id) = AddressId::from_address_string(pure_addr)
-                                && let Some(account_id) = address_registry.find_account(&addr_id) {
+                            if let Ok(addr_id) = AddressId::from_address_string(pure_addr) {
+                                if let Some(account_id) = address_registry.find_account(&addr_id) {
                                     // For change, we add ONLY the source account
                                     relevant_accounts.clear();
                                     relevant_accounts.insert(*account_id);
                                     break; // Only need the source account for change
                                 }
+                            }
                         }
                     }
                 }
@@ -321,10 +324,11 @@ fn find_source_account_for_transaction(
                 let pure_addr = &address_str[(address_str.find(':').unwrap() + 1)..];
 
                 // Try to convert to AddressId and find its account
-                if let Ok(addr_id) = AddressId::from_address_string(pure_addr)
-                    && let Some(account_id) = address_registry.find_account(&addr_id) {
+                if let Ok(addr_id) = AddressId::from_address_string(pure_addr) {
+                    if let Some(account_id) = address_registry.find_account(&addr_id) {
                         return Some(*account_id);
                     }
+                }
             }
 
             // Next, check for change addresses (these are most reliable for source account)
@@ -334,10 +338,11 @@ fn find_source_account_for_transaction(
             {
                 let pure_addr = &address_str[(address_str.find(':').unwrap() + 1)..];
 
-                if let Ok(addr_id) = AddressId::from_address_string(pure_addr)
-                    && let Some(account_id) = address_registry.find_account(&addr_id) {
+                if let Ok(addr_id) = AddressId::from_address_string(pure_addr) {
+                    if let Some(account_id) = address_registry.find_account(&addr_id) {
                         return Some(*account_id);
                     }
+                }
             }
         }
     }

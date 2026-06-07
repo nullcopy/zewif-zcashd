@@ -18,6 +18,19 @@ jobs:
       - name: Verify working directory is clean
         run: git diff --exit-code
 
+  msrv:
+    name: MSRV check (1.85)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.85"
+      - name: Build with MSRV toolchain
+        run: cargo +1.85 build --workspace --all-features --all-targets
+
   bitrot:
     name: Bitrot check
     runs-on: ubuntu-latest

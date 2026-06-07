@@ -3,6 +3,12 @@
 A Rust crate that reads a `zcashd` `wallet.dat` file and converts its contents
 into the **Zcash Wallet Interchange Format (ZeWIF)**.
 
+## Minimum Supported Rust Version (MSRV)
+
+This crate requires **Rust 1.85**. New language features that raise the MSRV
+must not be introduced without a corresponding bump here and in CI; the
+`msrv` job in `.github/workflows/ci.yml` enforces this.
+
 ## What is ZeWIF?
 
 ZeWIF is a wallet-agnostic representation of Zcash wallet data — seeds, keys,
